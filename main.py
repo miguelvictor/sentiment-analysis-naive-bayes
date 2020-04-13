@@ -2,6 +2,7 @@ from collections import defaultdict, Counter
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+import codecs
 import math
 import os
 import pickle
@@ -171,8 +172,8 @@ def get_samples(directory):
             review_id = int(match.group(1))
             rating = int(match.group(2))
 
-            with open(os.path.join(directory, name), 'r') as f:
-                contents = ' '.join(f.readlines())
+            with codecs.open(os.path.join(directory, name), 'r', encoding='utf8') as f:
+                contents = f.read()
                 review_classification = 1 if rating >= 7 else -1
 
                 samples.append((review_id, contents, review_classification))
@@ -197,13 +198,13 @@ if __name__ == '__main__':
         _, text, actual = sample[0], sample[1], sample[2]
         prediction = model.classify(text)
 
-        if actual is 1:
-            if prediction is 1:
+        if actual == 1:
+            if prediction == 1:
                 tp += 1
             else:
                 fn += 1
         else:
-            if prediction is 1:
+            if prediction == 1:
                 fp += 1
             else:
                 tn += 1
