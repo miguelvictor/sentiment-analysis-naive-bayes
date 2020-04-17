@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
 import codecs
+import itertools
 import math
 import os
 import pickle
@@ -53,13 +54,8 @@ class NaiveBayesClassifier:
         neg_train = get_samples('aclImdb/train/neg')
 
         # count length
-        n_pos_train = len(pos_train)
-        n_neg_train = len(neg_train)
-        n_samples = n_pos_train + n_neg_train
-
-        # compute class prior probabilities
-        pos_prior = math.log(n_pos_train / n_samples)
-        neg_prior = math.log(n_neg_train / n_samples)
+        n_pos_train = 0
+        n_neg_train = 0
 
         # bag of words container of positive and negative samples
         pos_bow = Counter()
@@ -67,18 +63,24 @@ class NaiveBayesClassifier:
 
         print('INFO - Generating BOW for positive training samples')
         for sample in pos_train:
+            n_pos_train += 1
             sample_contents = sample[1]
             sample_tokens = self.tokenize(sample_contents)
             pos_bow += Counter(sample_tokens)
 
         print('INFO - Generating BOW for negative training samples')
         for sample in neg_train:
+            n_neg_train += 1
             sample_contents = sample[1]
             sample_tokens = self.tokenize(sample_contents)
             neg_bow += Counter(sample_tokens)
 
+        # compute class prior probabilities
+        n_samples = n_pos_train + n_neg_train
+        pos_prior = math.log(n_pos_train / n_samples)
+        neg_prior = math.log(n_neg_train / n_samples)
+
         # count the number of words for each classes
-        # TODO : stopwords are excluded in this count so maybe correct this ?
         n_pos_words = sum(pos_bow.values())
         n_neg_words = sum(neg_bow.values())
 
@@ -162,7 +164,6 @@ def get_samples(directory):
     assert os.path.isdir(directory)
 
     pattern = re.compile(r'(\d+)_(\d+)\.txt')
-    samples = []
 
     print('INFO - Getting samples from directory: ' + directory)
     for name in os.listdir(directory):
@@ -176,16 +177,14 @@ def get_samples(directory):
                 contents = f.read()
                 review_classification = 1 if rating >= 7 else -1
 
-                samples.append((review_id, contents, review_classification))
-
-    return samples
+                yield (review_id, contents, review_classification)
 
 
 if __name__ == '__main__':
     model = NaiveBayesClassifier()
     pos_samples = get_samples('aclImdb/test/pos')
     neg_samples = get_samples('aclImdb/test/neg')
-    all_samples = pos_samples + neg_samples
+    all_samples = itertools.chain(pos_samples, neg_samples)
 
     # accuracy stuff
     tp = 0  # true positives
