@@ -153,8 +153,6 @@ class NaiveBayesClassifier:
         Classify the given text whether it is a positive or negative review.
         Returns 1 if the text is positive and -1 if it's negative.
         '''
-        print(self.stopwords)
-        exit(0)
         words = self.tokenize(text)
 
         # Initialize scores to the prior probabilities of the classes
