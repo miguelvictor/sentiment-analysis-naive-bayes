@@ -18,6 +18,7 @@ After installation, NLTK need to download some data to be useful. Invoke the pyt
 import nltk
 nltk.download('stopwords')
 nltk.download('punkt')
+nltk.download('wordnet')
 ```
 
 # Downloading the dataset

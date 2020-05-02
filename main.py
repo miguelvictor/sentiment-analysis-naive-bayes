@@ -50,6 +50,12 @@ class NaiveBayesClassifier:
         # Initialize model params (load saved params or retrain)
         self._init_params()
 
+        # Default likelihood of unknown words
+        pos_d = self.params['n_pos_words'] + self.params['n_vocab']
+        neg_d = self.params['n_neg_words'] + self.params['n_vocab']
+        self.def_pos_ll = math.log(1 / pos_d)
+        self.def_neg_ll = math.log(1 / neg_d)
+
     def _init_params(self):
         if os.path.isfile(self.saved_params_filename) and not self.should_retrain:
             with open(self.saved_params_filename, 'rb') as f:
@@ -159,13 +165,11 @@ class NaiveBayesClassifier:
         positive = self.params['pos_prior']
         negative = self.params['neg_prior']
 
-        # The default likelihood of an unknown word
-        def_pos_ll = math.log(1 / self.params['n_pos_words'])
-        def_neg_ll = math.log(1 / self.params['n_neg_words'])
-
         for word in words:
-            positive += self.params['pos_likelihood'].get(word, def_pos_ll)
-            negative += self.params['neg_likelihood'].get(word, def_neg_ll)
+            positive += self.params['pos_likelihood'].get(
+                word, self.def_pos_ll)
+            negative += self.params['neg_likelihood'].get(
+                word, self.def_neg_ll)
 
             # program sanity check
             if positive == 0 or negative == 0 or positive == negative:
