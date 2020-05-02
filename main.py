@@ -1,8 +1,10 @@
 from collections import defaultdict, Counter
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords as nltk_stopwords
+from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 import codecs
+import fire
 import itertools
 import math
 import os
@@ -11,12 +13,21 @@ import re
 
 
 class NaiveBayesClassifier:
-    def __init__(self, retrain=False):
+    def __init__(self, retrain=False, stopwords=True, lemmatize=True):
+        # flags that affect model's performance
+        self.should_retrain = retrain
+        self.should_use_stopwords = stopwords
+        self.should_lemmatize = lemmatize
+
+        # lemmatize words so that we only process the base form of words
+        self.lemmatizer = WordNetLemmatizer()
+
         # stopwords that are excluded in processing text
-        self.stopwords = set(stopwords.words('english'))
+        self.stopwords = set(nltk_stopwords.words(
+            'english') + ["'s", "'ve", 'br'])
 
         # The filename of the pickle file that contains the saved params
-        self.saved_params_filename = '_nbc_params_v2.pickle'
+        self.saved_params_filename = '_nbc_params.pickle'
 
         # Model parameters that is used to classify input texts
         self.params = {
@@ -40,7 +51,7 @@ class NaiveBayesClassifier:
         self._init_params()
 
     def _init_params(self):
-        if os.path.isfile(self.saved_params_filename):
+        if os.path.isfile(self.saved_params_filename) and not self.should_retrain:
             with open(self.saved_params_filename, 'rb') as f:
                 self.params = pickle.load(f)
                 print('INFO - Loaded model parameters from pickle.')
@@ -123,21 +134,27 @@ class NaiveBayesClassifier:
         # clean out unnecessary whitespace in text and lowercase text
         text = text.strip().lower()
 
-        # use nltk to tokenize text
-        tokens = word_tokenize(text)
+        # use nltk to tokenize text and filter out punctuation marks
+        tokens = [token for token in word_tokenize(
+            text) if re.search(r'[a-z]', token)]
 
-        # filter out stopwords
-        tokens = [token for token in tokens if token not in self.stopwords]
+        # lemmatize words if flag is True
+        if self.should_lemmatize:
+            tokens = [self.lemmatizer.lemmatize(token) for token in tokens]
 
-        # filter out punctuation marks
-        return [token for token in tokens if re.search(r'[a-z]', token)]
+        # filter out stopwords if flag is True
+        if self.should_use_stopwords:
+            tokens = [token for token in tokens if token not in self.stopwords]
+
+        return tokens
 
     def classify(self, text):
         '''
         Classify the given text whether it is a positive or negative review.
         Returns 1 if the text is positive and -1 if it's negative.
         '''
-
+        print(self.stopwords)
+        exit(0)
         words = self.tokenize(text)
 
         # Initialize scores to the prior probabilities of the classes
@@ -180,8 +197,9 @@ def get_samples(directory):
                 yield (review_id, contents, review_classification)
 
 
-if __name__ == '__main__':
-    model = NaiveBayesClassifier()
+def evaluate(retrain=False, stopwords=True, lemmatize=True):
+    model = NaiveBayesClassifier(
+        retrain=retrain, stopwords=stopwords, lemmatize=lemmatize)
     pos_samples = get_samples('aclImdb/test/pos')
     neg_samples = get_samples('aclImdb/test/neg')
     all_samples = itertools.chain(pos_samples, neg_samples)
@@ -219,3 +237,16 @@ if __name__ == '__main__':
     print('EVALUATION - Recall: %.4f' % recall)
     print('EVALUATION - F-measure: %.4f' % f_measure)
     print('EVALUATION - Accuracy: %.4f' % accuracy)
+
+
+def classify(text, retrain=False, stopwords=True, lemmatize=True):
+    model = NaiveBayesClassifier(
+        retrain=retrain, stopwords=stopwords, lemmatize=lemmatize)
+    return model.classify(text)
+
+
+if __name__ == '__main__':
+    fire.Fire({
+        'evaluate': evaluate,
+        'classify': classify,
+    })
